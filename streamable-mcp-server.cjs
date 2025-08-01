@@ -1,25 +1,35 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(express.json());
 
-app.post('/stream', async (req, res) => {
-  res.setHeader('Content-Type', 'application/x-ndjson');
-  res.setHeader('Transfer-Encoding', 'chunked');
+const PORT = process.env.PORT || 10000;
 
-  const messages = [
-    { type: "message", content: "Hello from LogicLabsAI MCP!" },
-    { type: "action", content: "Working on your request..." },
-    { type: "done", content: "All tasks completed successfully." }
-  ];
+// ✅ Enforce Bearer token
+const AUTH_TOKEN = "test-token-123";
 
-  for (const msg of messages) {
-    res.write(JSON.stringify(msg) + "\n");
-    await new Promise(r => setTimeout(r, 1000)); // Simulate delay
+app.post("/stream", (req, res) => {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader || authHeader !== `Bearer ${AUTH_TOKEN}`) {
+    return res.status(403).json({ error: "Unauthorized: Invalid token" });
   }
 
-  res.end();
+  // Simulate NDJSON streaming
+  res.setHeader("Content-Type", "application/x-ndjson");
+
+  const send = (obj) => res.write(JSON.stringify(obj) + "\n");
+
+  send({ type: "message", content: "Hello from LogicLabsAI MCP!" });
+
+  setTimeout(() => {
+    send({ type: "action", content: "Working on your request..." });
+
+    setTimeout(() => {
+      send({ type: "done", content: "All tasks completed successfully." });
+      res.end();
+    }, 2000);
+
+  }, 1000);
 });
 
 app.listen(PORT, () => {
